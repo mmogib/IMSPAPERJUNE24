@@ -22,7 +22,7 @@ This repository contains the code to reproduce the results for the `UIDFPAF` alg
     julia --project=.
     ```
 5. Exit from Julia `REPL` by running
-6. ```julia
+   ```julia
    exit()
    ```
 7. Run the package installation script to install all required packages:
