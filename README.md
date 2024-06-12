@@ -86,6 +86,3 @@ plts = plotFailedProblems(; save_plot=true, dim=1000)
 ## Additional Information
 
 For more details on the functions and their implementations, refer to the respective `.jl` files in the repository.
-```
-
-This `README.md` file provides a clear and detailed guide for anyone who wants to reproduce the results, including installing Julia, setting up the environment, running the experiments, and understanding the main script's content.
