@@ -6,105 +6,86 @@
 > - Mohammed Alshahrani, 
 > - Suliman Al-Homidan 
 
-This repository contains the code and instructions for running experiments using the `UIDFPA` package. The experiments focus on optimizing energy management in smart grids by integrating demand response strategies.
+This repository contains the code to reproduce the results for the `UIDFPAF` algorithm on 28 test problems. Follow the steps below to set up the environment and run the experiments.
 
-## Requirements
+## Step 1: Install Julia
 
-To run the experiments, you need to install the following Julia packages:
+1. Download and install Julia from the [official website](https://julialang.org/downloads/).
+2. Add Julia to your system PATH if it is not done automatically during installation.
 
-- `UIDFPA`
-- `Random`
-- `Dates`
-- `LinearAlgebra`
-- `Statistics`
-- `TimeZones`
-- `DataFrames`
-- `Plots`
-- `StatsPlots`
-- `XLSX`
+## Step 2: Install Required Packages
 
-You can install these packages using Julia's package manager:
+1. Clone this repository or download the files to your local machine.
+2. Open a terminal and navigate to the directory containing the repository.
+3. Create a new Julia environment or activate an existing one by running:
+    ```sh
+    julia --project=.
+    ```
+5. Exit from Julia `REPL` by running
+6. ```julia
+   exit()
+   ```
+7. Run the package installation script to install all required packages:
+    ```sh
+    julia install_packages.jl
+    ```
 
+## Step 3: Run the Code
+
+1. Run the main script to perform the experiments and generate results:
+    ```sh
+    julia main.jl
+    ```
+
+## Content of `main.jl`
+
+The `main.jl` file is the main script that orchestrates the experiments, data loading, and plotting. Below is a detailed explanation of its contents:
+
+### 1. Initialize
+
+The script begins by including the initialization file:
 ```julia
-using Pkg
-Pkg.add("https://github.com/mmogib/IMSPAPERJUNE24.git")
-Pkg.add("TimeZones")
-Pkg.add("DataFrames")
-Pkg.add("Plots")
-Pkg.add("StatsPlots")
-Pkg.add("XLSX")
+include("init.jl")
 ```
 
-## Setup
+### 2. Run Experiments
 
-Make sure to include the necessary utility files before running the experiments:
-
+The `run_experiment_1` function runs the experiments on the specified problems and dimensions, saves the data, and sets the maximum iterations and time limits (nothing means no time limit).
 ```julia
-include("utils.jl")
-include("fns.jl")
+sols = run_experiement_1(
+    problems_list=[i for i in 1:28],
+    dim=[15_000, 50_000,150_000],
+    save_data=true,
+    mxiters=2_000,
+    time_limit=nothing,
+    linesearchs=[LSI, LSII, LSIII, LSIV, LSV, LSVI, LSVII]
+)
 ```
 
-## Experiment 1
+### 3. Load Data from Database
 
-To run Experiment 1, execute the following command. The results will be saved in the folders `results/scenario1/` and `results/scenario2/`.
-
+The `loadResultsFromDB` function loads the results data from the database (saved in `results` folder) into a DataFrame for analysis.
 ```julia
-run_experiment_1()
+results_df = loadResultsFromDB()
 ```
 
-## Experiment 2 (Production)
+### 4. Make Plots
 
-To run Experiment 2 and save the results, use the following command. The results will be saved in `results/experiment2/yyyy_mm_dd/solutions.xlsx`, where `yyyy_mm_dd` stands for the date when the results are saved.
-
+The `plotData` function generates plots based on the results data.
 ```julia
-sols = experiment2(50:50:400, 4:4:20, "results/experiment2")  # Uncomment to run
+plts = plotData()
 ```
 
-## Experiment 2 (Plots and Tables)
+### 5. Plot Failed Problems
 
-The provided Julia code performs several steps to read data from an Excel file, process it, and generate plots. Here's a detailed explanation of each part:
+The `plotFailedProblems` function generates plots for the problems that failed during the experiments.
+```julia
+plts = plotFailedProblems(; save_plot=true, dim=1000)
+```
 
-1. **Reading Data from Excel:**
-   ```julia
-   df = readExperiment2Results("results/experiment2/2024_05_15/solutions.xlsx", "SOLUTIONS")
-   ```
-   This line reads the data from the specified Excel file (`solutions.xlsx`) and sheet (`SOLUTIONS`) into a DataFrame `df`. The `readExperiment2Results` function is assumed to be a custom function defined elsewhere in the code.
+## Additional Information
 
-2. **Grouping and Aggregating Data:**
-   ```julia
-   groupddf = groupby(df, [:c, :g]) |>
-     d -> combine(d,
-                  :cost => mean => :cost_avg,
-                  :emission => mean => :emission_avg,
-                  :utility => mean => :utility_avg,
-                  :demand => mean => :demand_avg,
-                  :loss => mean => :loss_avg,
-                  :power_generated => mean => :power_generated_avg,
-                  :time => mean => :time_avg) |>
-     d -> transform(d,
-                    [:demand_avg, :power_generated_avg] =>
-                    ByRow((r1, r2) -> 100 * (r1 - r2) / r1) => :load_reduction)
-   ```
-   - **Grouping:** `groupby(df, [:c, :g])` groups the DataFrame `df` by the columns `:c` (representing the number of customers) and `:g` (representing the number of generators).
-   - **Aggregating:** For each group, the `combine` function calculates the mean of several columns (`:cost`, `:emission`, `:utility`, `:demand`, `:loss`, `:power_generated`, `:time`) and creates new columns with the suffix `_avg` (e.g., `:cost_avg`, `:emission_avg`).
-   - **Calculating Load Reduction:** The `transform` function adds a new column `:load_reduction` that calculates the percentage reduction in load using the formula `100 * (demand_avg - power_generated_avg) / demand_avg`.
+For more details on the functions and their implementations, refer to the respective `.jl` files in the repository.
+```
 
-3. **Plot Data Definitions:**
-   ```julia
-   plts_data = [
-     (:cost_avg, "Cost (\$)"),
-     (:emission_avg, "Emission (lb)"),
-     (:utility_avg, "Utility"),
-     (:load_reduction, "Load Reduction (MW)"),
-     (:loss_avg, "Loss (MW)"),
-     (:time_avg, "CPU Time (seconds)"),
-   ]
-   ```
-   This array defines the columns to be plotted along with their corresponding y-axis labels. Each tuple contains the column name and its label.
-
-4. **Generating Plots:**
-   ```julia
-   pls = map(plts_data) do (item, ylabel)
-     pltit(groupddf, 50:50:400, 4:4:20, item, "Number of customers", ylabel; folder="results/experiment2/2024_05_12")
-   end
-   ```
+This `README.md` file provides a clear and detailed guide for anyone who wants to reproduce the results, including installing Julia, setting up the environment, running the experiments, and understanding the main script's content.
